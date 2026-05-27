@@ -24,20 +24,38 @@ async function searchYouTubeVideos(
   creatorName: string,
   maxVideos: number
 ): Promise<{ videoId: string; title: string; thumbnail: string; views: unknown; publishedDate: string; length: string }[]> {
-  const data = await serpapi({ engine: "youtube", search_query: creatorName });
-  const results: Record<string, unknown>[] = (data.video_results as Record<string, unknown>[]) ?? [];
+  const collected: { videoId: string; title: string; thumbnail: string; views: unknown; publishedDate: string; length: string }[] = [];
+  let nextPageToken: string | undefined;
 
-  return results
-    .slice(0, maxVideos)
-    .map((v) => ({
-      videoId: (v.link as string)?.split("v=")[1]?.split("&")[0] ?? "",
-      title: (v.title as string) ?? "",
-      thumbnail: ((v.thumbnail as Record<string, string>)?.static) ?? "",
-      views: v.views,
-      publishedDate: (v.published_date as string) ?? "",
-      length: (v.length as string) ?? "",
-    }))
-    .filter((v) => v.videoId);
+  while (collected.length < maxVideos) {
+    const params: Record<string, string> = {
+      engine: "youtube",
+      search_query: creatorName,
+    };
+    if (nextPageToken) params.next_page_token = nextPageToken;
+
+    const data = await serpapi(params);
+    const results: Record<string, unknown>[] = (data.video_results as Record<string, unknown>[]) ?? [];
+
+    for (const v of results) {
+      if (collected.length >= maxVideos) break;
+      const videoId = (v.link as string)?.split("v=")[1]?.split("&")[0] ?? "";
+      if (!videoId) continue;
+      collected.push({
+        videoId,
+        title: (v.title as string) ?? "",
+        thumbnail: ((v.thumbnail as Record<string, string>)?.static) ?? "",
+        views: v.views,
+        publishedDate: (v.published_date as string) ?? "",
+        length: (v.length as string) ?? "",
+      });
+    }
+
+    nextPageToken = (data.serpapi_pagination as Record<string, string> | undefined)?.next_page_token;
+    if (!nextPageToken || results.length === 0) break;
+  }
+
+  return collected;
 }
 
 async function fetchVideoDetails(
@@ -66,30 +84,39 @@ async function fetchTranscript(videoId: string): Promise<string> {
   }
 }
 
+async function batch<T>(items: T[], size: number, fn: (item: T) => Promise<unknown>): Promise<Awaited<ReturnType<typeof fn>>[]> {
+  const results: Awaited<ReturnType<typeof fn>>[] = [];
+  for (let i = 0; i < items.length; i += size) {
+    const chunk = items.slice(i, i + size);
+    const chunkResults = await Promise.all(chunk.map(fn));
+    results.push(...chunkResults);
+  }
+  return results;
+}
+
 export async function fetchVideosWithDetails(
   creatorName: string,
   maxVideos = 10
 ): Promise<VideoData[]> {
   const searchResults = await searchYouTubeVideos(creatorName, maxVideos);
 
-  const videos = await Promise.all(
-    searchResults.map(async (v) => {
-      const [details, transcript] = await Promise.all([
-        fetchVideoDetails(v.videoId),
-        fetchTranscript(v.videoId),
-      ]);
-      return {
-        videoId: v.videoId,
-        title: v.title,
-        thumbnail: v.thumbnail,
-        views: parseViews(v.views) || details.views,
-        publishedDate: v.publishedDate,
-        length: v.length,
-        description: details.description,
-        likes: details.likes,
-        transcript,
-      } satisfies VideoData;
-    })
-  );
+  const videos = await batch(searchResults, 10, async (v) => {
+    const [details, transcript] = await Promise.all([
+      fetchVideoDetails(v.videoId),
+      fetchTranscript(v.videoId),
+    ]);
+    return {
+      videoId: v.videoId,
+      title: v.title,
+      thumbnail: v.thumbnail,
+      views: parseViews(v.views) || details.views,
+      publishedDate: v.publishedDate,
+      length: v.length,
+      description: details.description,
+      likes: details.likes,
+      transcript,
+    } satisfies VideoData;
+  }) as VideoData[];
+
   return videos;
 }

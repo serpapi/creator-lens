@@ -144,8 +144,13 @@ export async function analyzeCreator(
 
   console.log(`[analyzeCreator] starting for "${creatorName}" with ${videos.length} videos`);
 
-  // Step 1: summarize all videos in parallel (each gets its full transcript)
-  const summaries = await Promise.all(videos.map((v) => summarizeVideo(v)));
+  // Step 1: summarize videos in batches of 10 (each gets its full transcript)
+  const summaries: VideoSummary[] = [];
+  for (let i = 0; i < videos.length; i += 10) {
+    const chunk = videos.slice(i, i + 10);
+    const chunkSummaries = await Promise.all(chunk.map((v) => summarizeVideo(v)));
+    summaries.push(...chunkSummaries);
+  }
   console.log(`[analyzeCreator] step 1 complete — ${summaries.length} summaries ready`);
 
   // Step 2: single cross-video analysis using the summaries
