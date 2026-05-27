@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 import { fetchVideosWithDetails } from "@/lib/serpapi";
 import { analyzeCreator } from "@/lib/deepseek";

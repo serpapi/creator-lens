@@ -1,22 +1,22 @@
 import { AnalyzeForm } from "@/components/analyze-form";
-import { SerpApiBadge, DeepSeekBadge, SerpApiLogoImg, DeepSeekLogoImg } from "@/components/brand-logos";
+import { SerpApiBadge, DeepSeekBadge } from "@/components/brand-logos";
 
 const FEATURES = [
   {
-    logo: <SerpApiLogoImg className="h-5 w-auto" />,
-    bg: "bg-[#7C3AED]",
+    logo: "/serpapi-square-logo.png",
+    alt: "SerpApi",
     title: "YouTube Data via SerpApi",
     desc: "Search videos, pull metadata, fetch transcripts — all through SerpApi's YouTube APIs.",
   },
   {
-    logo: <SerpApiLogoImg className="h-5 w-auto" />,
-    bg: "bg-[#7C3AED]",
+    logo: "/serpapi-square-logo.png",
+    alt: "SerpApi",
     title: "Video Details via SerpApi",
     desc: "Retrieve per-video descriptions, view counts, and full transcript text at scale.",
   },
   {
-    logo: <DeepSeekLogoImg className="h-5 w-auto" />,
-    bg: "bg-[#EFF6FF]",
+    logo: "/deepseek-square-logo.png",
+    alt: "DeepSeek",
     title: "Strategy Analysis via DeepSeek",
     desc: "DeepSeek AI extracts content themes, title patterns, beliefs, and a full strategy report.",
   },
@@ -57,11 +57,9 @@ export default function Home() {
         <AnalyzeForm />
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-5 max-w-3xl w-full px-4">
-          {FEATURES.map(({ logo, bg, title, desc }) => (
+          {FEATURES.map(({ logo, alt, title, desc }) => (
             <div key={title} className="bg-gray-50 border border-gray-100 rounded-2xl p-6 space-y-3">
-              <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center px-1.5`}>
-                {logo}
-              </div>
+              <img src={logo} alt={alt} className="w-10 h-10 rounded-xl object-cover" />
               <p className="text-[15px] font-semibold text-gray-900">{title}</p>
               <p className="text-[14px] font-normal text-gray-500 leading-relaxed">{desc}</p>
             </div>

@@ -4,14 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const EXAMPLE_CREATORS = ["Dan Koe", "Ali Abdaal", "MrBeast"];
+const VIDEO_COUNT_OPTIONS = [10, 25, 50, 100];
 
 export function AnalyzeForm() {
   const router = useRouter();
   const [input, setInput] = useState("");
+  const [maxVideos, setMaxVideos] = useState(10);
 
   function navigate(name: string) {
     if (!name.trim()) return;
-    router.push(`/dashboard/${encodeURIComponent(name.trim())}`);
+    router.push(`/dashboard/${encodeURIComponent(name.trim())}?maxVideos=${maxVideos}`);
   }
 
   return (
@@ -32,6 +34,25 @@ export function AnalyzeForm() {
         >
           Analyze Creator
         </button>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <span className="text-[13px] text-gray-500 font-medium">Videos to analyze:</span>
+        <div className="flex gap-1.5">
+          {VIDEO_COUNT_OPTIONS.map((count) => (
+            <button
+              key={count}
+              onClick={() => setMaxVideos(count)}
+              className={`text-[13px] font-semibold px-3 py-1.5 rounded-lg border transition ${
+                maxVideos === count
+                  ? "bg-[#7C3AED] text-white border-[#7C3AED]"
+                  : "text-[#7C3AED] bg-[#F3E8FF] border-[#DDD6FE] hover:bg-[#EDE9FE]"
+              }`}
+            >
+              {count}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex gap-2 flex-wrap">

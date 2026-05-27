@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { CreatorAnalysis } from "@/lib/types";
 import { LoadingScreen } from "@/components/loading-screen";
 import { Dashboard } from "@/components/dashboard";
 
 export default function DashboardPage() {
   const { creatorName } = useParams<{ creatorName: string }>();
+  const searchParams = useSearchParams();
   const decoded = decodeURIComponent(creatorName);
+  const maxVideos = Number(searchParams.get("maxVideos") ?? "10");
 
   const [data, setData] = useState<CreatorAnalysis | null>(null);
   const [error, setError] = useState("");
@@ -17,7 +19,7 @@ export default function DashboardPage() {
     fetch("/api/analyze-creator", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ creatorName: decoded, maxVideos: 10 }),
+      body: JSON.stringify({ creatorName: decoded, maxVideos }),
     })
       .then((res) => res.json())
       .then((json) => {
@@ -25,7 +27,7 @@ export default function DashboardPage() {
         else setData(json);
       })
       .catch(() => setError("Network error. Please try again."));
-  }, [decoded]);
+  }, [decoded, maxVideos]);
 
   if (error) {
     return (
