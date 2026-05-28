@@ -8,10 +8,7 @@ CreatorLens is a lightweight dashboard that uses AI to reverse-engineer a creato
 
 ## 🎬 Demo
 
-<video width="100%" controls>
-  <source src="doc/creator-lens-demo.mov" type="video/quicktime">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/dd8aae6f-a20d-4394-8779-8992fad5f94c
 
 ---
 
