@@ -6,6 +6,15 @@ CreatorLens is a lightweight dashboard that uses AI to reverse-engineer a creato
 
 ---
 
+## 🎬 Demo
+
+<video width="100%" controls>
+  <source src="doc/creator-lens-demo.mov" type="video/quicktime">
+  Your browser does not support the video tag.
+</video>
+
+---
+
 ## ✨ What You Get
 
 - 🔍 **Search videos** from any YouTube creator  
@@ -45,7 +54,7 @@ For any creator, it discovers:
 
 ```bash
 git clone <repo-url>
-cd creator-lens-demo
+cd creator-lens
 npm install
 ```
 
