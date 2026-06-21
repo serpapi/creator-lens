@@ -6,6 +6,8 @@ CreatorLens is a lightweight DevRel demo that shows how a polished creator analy
 
 The public demo should not call SerpApi or DeepSeek directly. Instead, it should load precomputed dashboard data from Neon so API keys are never needed in the public deployment.
 
+Dan Koe is the built-in preloaded demo profile. Any other creator is a bring-your-own-key live analysis flow.
+
 ---
 
 ## Recommended Workflow
@@ -32,7 +34,8 @@ The production demo is designed to be deterministic and safe:
 - Demo data is stored in Neon Postgres.
 - SerpApi and DeepSeek keys stay local/private.
 - The public Vercel app should not expose an unauthenticated endpoint that spends API credits.
-- Live analysis can remain a local-only workflow for generating or refreshing seed data.
+- Dan Koe loads from Neon without calling SerpApi or DeepSeek.
+- Other creators require user-provided SerpApi and DeepSeek keys before live analysis can run.
 
 ---
 
@@ -111,7 +114,9 @@ SERPAPI_API_KEY
 DEEPSEEK_API_KEY
 ```
 
-Those keys are for private local ingestion/generation only.
+Those maintainer-owned keys are for private local ingestion/generation only. For arbitrary non-demo creators, users must provide their own keys for that request.
+
+The server must never return, log, persist, or expose user-provided API keys.
 
 ### Private Local Use
 
@@ -147,10 +152,11 @@ Seed scripts should be idempotent and upsert by stable slugs and video IDs.
 ## Target User Flow
 
 1. User opens the Vercel demo.
-2. App loads a seeded creator profile from Neon.
-3. Dashboard renders immediately from stored analysis JSON.
-4. If a creator is not seeded, the app shows a safe unavailable state.
-5. The public app does not call SerpApi or DeepSeek.
+2. User clicks **Try preloaded demo** for Dan Koe.
+3. App loads Dan Koe from Neon tables: `analysis_results`, `videos`, `transcripts`, `content_clusters`, and `creator_insights`.
+4. Dashboard renders immediately from stored analysis JSON.
+5. If a user searches any other creator, the UI shows **Bring your own API key**.
+6. Live analysis cannot run unless that request includes both `SERPAPI_API_KEY` and `DEEPSEEK_API_KEY`.
 
 ---
 
@@ -197,9 +203,10 @@ Deploy to Vercel only after the app reads seeded demo data from Neon:
 |---------|----------|
 | Seeded creator does not load | Check `DATABASE_URL`, seed data, and creator slug |
 | Public demo tries live analysis | Check `CREATORLENS_DEMO_MODE=true` and route guards |
+| Other creator cannot run | Provide user-owned SerpApi and DeepSeek keys for that request |
 | Vercel has SerpApi/DeepSeek keys | Remove them and redeploy |
 | Build fails on fonts | Re-run build with network access so Next can fetch Google Fonts |
-| Unseeded creator requested | Return a safe unavailable state instead of calling paid APIs |
+| Unseeded creator requested without keys | Return an API-key-required state instead of calling paid APIs |
 
 ---
 

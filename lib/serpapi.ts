@@ -1,10 +1,8 @@
 import { getJson } from "serpapi";
 import { VideoData } from "./types";
 
-const API_KEY = process.env.SERPAPI_API_KEY!;
-
-function serpapi(params: Record<string, string>) {
-  return getJson({ ...params, api_key: API_KEY });
+function serpapi(params: Record<string, string>, apiKey: string) {
+  return getJson({ ...params, api_key: apiKey });
 }
 
 function parseViews(raw: unknown): number {
@@ -22,7 +20,8 @@ function parseViews(raw: unknown): number {
 
 async function searchYouTubeVideos(
   creatorName: string,
-  maxVideos: number
+  maxVideos: number,
+  apiKey: string
 ): Promise<{ videoId: string; title: string; thumbnail: string; views: unknown; publishedDate: string; length: string }[]> {
   const collected: { videoId: string; title: string; thumbnail: string; views: unknown; publishedDate: string; length: string }[] = [];
   let nextPageToken: string | undefined;
@@ -34,7 +33,7 @@ async function searchYouTubeVideos(
     };
     if (nextPageToken) params.next_page_token = nextPageToken;
 
-    const data = await serpapi(params);
+    const data = await serpapi(params, apiKey);
     const results: Record<string, unknown>[] = (data.video_results as Record<string, unknown>[]) ?? [];
 
     for (const v of results) {
@@ -59,10 +58,11 @@ async function searchYouTubeVideos(
 }
 
 async function fetchVideoDetails(
-  videoId: string
+  videoId: string,
+  apiKey: string
 ): Promise<{ description: string; views: number; likes: number }> {
   try {
-    const data = await serpapi({ engine: "youtube_video", v: videoId });
+    const data = await serpapi({ engine: "youtube_video", v: videoId }, apiKey);
     const vr = (data.video_results as Record<string, unknown>) ?? {};
     return {
       description: (vr.description as string) ?? "",
@@ -74,9 +74,9 @@ async function fetchVideoDetails(
   }
 }
 
-async function fetchTranscript(videoId: string): Promise<string> {
+async function fetchTranscript(videoId: string, apiKey: string): Promise<string> {
   try {
-    const data = await serpapi({ engine: "youtube_video_transcript", v: videoId });
+    const data = await serpapi({ engine: "youtube_video_transcript", v: videoId }, apiKey);
     const snippets = (data.transcript as { snippets?: { text: string }[] })?.snippets ?? [];
     return snippets.map((s) => s.text).join(" ");
   } catch {
@@ -96,14 +96,15 @@ async function batch<T>(items: T[], size: number, fn: (item: T) => Promise<unkno
 
 export async function fetchVideosWithDetails(
   creatorName: string,
-  maxVideos = 10
+  maxVideos = 10,
+  apiKey: string
 ): Promise<VideoData[]> {
-  const searchResults = await searchYouTubeVideos(creatorName, maxVideos);
+  const searchResults = await searchYouTubeVideos(creatorName, maxVideos, apiKey);
 
   const videos = await batch(searchResults, 10, async (v) => {
     const [details, transcript] = await Promise.all([
-      fetchVideoDetails(v.videoId),
-      fetchTranscript(v.videoId),
+      fetchVideoDetails(v.videoId, apiKey),
+      fetchTranscript(v.videoId, apiKey),
     ]);
     return {
       videoId: v.videoId,

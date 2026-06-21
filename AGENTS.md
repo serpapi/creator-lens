@@ -20,6 +20,14 @@ User opens demo with preloaded dashboard
 
 Treat live external API analysis as a private local/development tool only. Public deployments should serve deterministic, seeded dashboards from Neon so API keys are never needed in the public Vercel project.
 
+Current routing rule:
+
+- Dan Koe is the only built-in demo profile and must read from Neon seed tables.
+- Dan Koe demo mode must not call SerpApi or DeepSeek.
+- Any other creator is a bring-your-own-key live analysis flow.
+- Live analysis must require request-provided `SERPAPI_API_KEY` and `DEEPSEEK_API_KEY` values.
+- Do not use maintainer-owned server-side production SerpApi or DeepSeek keys for arbitrary public searches.
+
 ## Tech Stack
 
 - Next.js `16.2.6` with App Router.
@@ -64,8 +72,8 @@ Production Vercel should contain Neon connection variables only:
 
 Private local-only variables:
 
-- `SERPAPI_API_KEY` - local/private ingestion only. Do not add this to public Vercel production.
-- `DEEPSEEK_API_KEY` - local/private analysis generation only. Do not add this to public Vercel production.
+- `SERPAPI_API_KEY` - optional local/private ingestion only. Do not add this to public Vercel production or use it for arbitrary public searches.
+- `DEEPSEEK_API_KEY` - optional local/private analysis generation only. Do not add this to public Vercel production or use it for arbitrary public searches.
 
 Rules:
 
@@ -73,6 +81,8 @@ Rules:
 - Keep `.env.local` local-only and out of commits.
 - Do not put SerpApi or DeepSeek keys in a public demo deployment.
 - Public deployments must not provide an unauthenticated endpoint that spends API credits.
+- For non-demo creators, the request must include user-provided API keys; validate both keys server-side before live analysis.
+- Never return, log, persist, or expose user-provided API keys.
 - If live analysis is ever needed in production, put it behind authentication, rate limits, and explicit owner-only controls.
 
 ## Database Plan With Neon Postgres
@@ -119,12 +129,15 @@ Design goals:
 
 Suggested behavior:
 
-1. `/` can show example creators or link directly to a seeded default dashboard.
-2. `/dashboard/[creatorName]` first resolves a creator slug against Neon seed data.
-3. `POST /api/analyze-creator` should return seeded Neon data in demo mode.
-4. If a creator is not seeded, return a helpful "demo profile unavailable" response rather than calling paid APIs.
-5. Keep live SerpApi/DeepSeek calls behind an explicit local-only guard such as `CREATORLENS_ENABLE_LIVE_ANALYSIS=true`.
-6. Log whether a response came from `neon-seed`, `local-live`, or `unavailable`, but do not expose secrets.
+1. `/` should clearly show Dan Koe as "Try preloaded demo".
+2. Other creator searches should be labeled "Bring your own API key".
+3. `/dashboard/[creatorName]` should request a seeded Dan Koe dashboard from Neon when the selected creator is Dan Koe.
+4. `POST /api/analyze-creator` must return seeded Neon data for Dan Koe.
+5. The Dan Koe path must read from `analysis_results`, `videos`, `transcripts`, `content_clusters`, and `creator_insights`.
+6. The Dan Koe path must not call SerpApi or DeepSeek.
+7. Non-Dan creator requests must validate request-provided SerpApi and DeepSeek keys before live analysis.
+8. If non-Dan keys are missing, return an API-key-required response rather than calling paid APIs.
+9. Log whether a response came from `neon-seed`, `user-live`, or `keys-required`, but do not expose secrets.
 
 ## Seed Data Strategy
 
@@ -215,11 +228,12 @@ Use this order for the new public-demo workflow:
 5. Create tables in a Neon development branch.
 6. Seed demo data into Neon with idempotent scripts.
 7. Connect the app to Neon with server-only database helpers.
-8. Update dashboard routes and API routes to read seeded data in demo mode.
-9. Ensure missing/unseeded creators do not trigger paid API calls in public production.
-10. Configure Vercel with Neon env vars and `CREATORLENS_DEMO_MODE=true`.
-11. Confirm SerpApi and DeepSeek keys are absent from Vercel production.
-12. Run `npm run lint` and `npm run build`.
-13. Deploy to Vercel.
-14. Smoke test: home page, seeded dashboard, unseeded creator response, mobile layout.
-15. Only after the seeded public demo works, consider an authenticated owner-only live ingestion path.
+8. Update dashboard routes and API routes to read seeded Dan Koe data in demo mode.
+9. Add BYOK validation for all other creators.
+10. Ensure missing/unseeded creators do not trigger paid API calls without request-provided keys.
+11. Configure Vercel with Neon env vars and `CREATORLENS_DEMO_MODE=true`.
+12. Confirm SerpApi and DeepSeek maintainer keys are absent from Vercel production.
+13. Run `npm run lint` and `npm run build`.
+14. Deploy to Vercel.
+15. Smoke test: home page, seeded Dan Koe dashboard, non-Dan API-key-required state, mobile layout.
+16. Only after the seeded public demo works, consider an authenticated owner-only ingestion path.

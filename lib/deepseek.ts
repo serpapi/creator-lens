@@ -2,7 +2,6 @@ import { CreatorAnalysis, VideoData, VideoSummary } from "./types";
 import { buildVideoSummaryPrompt, buildAnalysisPrompt } from "./prompts";
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
-const API_KEY = process.env.DEEPSEEK_API_KEY!;
 
 const SYSTEM_MESSAGE =
   "You are a JSON-only assistant. Always respond with valid JSON only. No markdown, no code fences, no explanation.";
@@ -13,12 +12,12 @@ function stripMarkdown(content: string): string {
   return match ? match[1].trim() : content.trim();
 }
 
-async function callDeepSeek<T>(label: string, prompt: string): Promise<Partial<T>> {
+async function callDeepSeek<T>(label: string, prompt: string, apiKey: string): Promise<Partial<T>> {
   const res = await fetch(DEEPSEEK_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: "deepseek-chat",
@@ -58,9 +57,9 @@ async function callDeepSeek<T>(label: string, prompt: string): Promise<Partial<T
 
 // ── Step 1: summarize a single video using its full transcript ─────────────
 
-async function summarizeVideo(video: VideoData): Promise<VideoSummary> {
+async function summarizeVideo(video: VideoData, apiKey: string): Promise<VideoSummary> {
   const prompt = buildVideoSummaryPrompt(video);
-  const raw = await callDeepSeek<VideoSummary>(`summarize:${video.videoId}`, prompt);
+  const raw = await callDeepSeek<VideoSummary>(`summarize:${video.videoId}`, prompt, apiKey);
 
   const summary: VideoSummary = {
     videoId: video.videoId,
@@ -91,12 +90,13 @@ async function analyzeFromSummaries(
   creatorName: string,
   summaries: VideoSummary[],
   totalViews: number,
-  averageViews: number
+  averageViews: number,
+  apiKey: string
 ): Promise<CreatorAnalysis> {
   console.log(`[analyzeFromSummaries] running with ${summaries.length} summaries`);
 
   const prompt = buildAnalysisPrompt(summaries);
-  const parsed = await callDeepSeek<CreatorAnalysis>("analysis", prompt);
+  const parsed = await callDeepSeek<CreatorAnalysis>("analysis", prompt, apiKey);
 
   console.log("[analyzeFromSummaries] parsed fields:", {
     mainNiche: parsed.mainNiche,
@@ -137,7 +137,8 @@ async function analyzeFromSummaries(
 
 export async function analyzeCreator(
   creatorName: string,
-  videos: VideoData[]
+  videos: VideoData[],
+  apiKey: string
 ): Promise<CreatorAnalysis> {
   const totalViews = videos.reduce((sum, v) => sum + v.views, 0);
   const averageViews = videos.length ? Math.round(totalViews / videos.length) : 0;
@@ -148,13 +149,13 @@ export async function analyzeCreator(
   const summaries: VideoSummary[] = [];
   for (let i = 0; i < videos.length; i += 10) {
     const chunk = videos.slice(i, i + 10);
-    const chunkSummaries = await Promise.all(chunk.map((v) => summarizeVideo(v)));
+    const chunkSummaries = await Promise.all(chunk.map((v) => summarizeVideo(v, apiKey)));
     summaries.push(...chunkSummaries);
   }
   console.log(`[analyzeCreator] step 1 complete — ${summaries.length} summaries ready`);
 
   // Step 2: single cross-video analysis using the summaries
-  const result = await analyzeFromSummaries(creatorName, summaries, totalViews, averageViews);
+  const result = await analyzeFromSummaries(creatorName, summaries, totalViews, averageViews, apiKey);
   console.log(`[analyzeCreator] step 2 complete — mainNiche: ${result.mainNiche}, themes: ${result.topContentThemes.length}`);
 
   return result;

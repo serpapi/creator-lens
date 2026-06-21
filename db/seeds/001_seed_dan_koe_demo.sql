@@ -47,6 +47,43 @@ INSERT INTO _dan_koe_templates VALUES
   (18, 'I Rebuilt My Week Around {topic}'),
   (19, 'The Most Valuable Skill Inside {topic}');
 
+CREATE TEMP TABLE _dan_koe_thumbnails (
+  idx integer PRIMARY KEY,
+  youtube_video_id text NOT NULL
+) ON COMMIT DROP;
+
+INSERT INTO _dan_koe_thumbnails VALUES
+  (0, 'FBHhmqBs894'),
+  (1, '7HM-rptYdTs'),
+  (2, 'YM0_8mOaKic'),
+  (3, '3rNqNvwNcrM'),
+  (4, 'vRsO_SmCYbQ'),
+  (5, 'VXgusdDbsQE'),
+  (6, 'TY8IVSQnwlk'),
+  (7, 'vCoGfisdS8Y'),
+  (8, 'ExNWGF-q64M'),
+  (9, 'VyR8nqD3sQ8'),
+  (10, 'K8K09g9XR4s'),
+  (11, '0XI_Xt0ci2Y'),
+  (12, 'DKT6m_8vCkA'),
+  (13, 'xgpLjLHB5sA'),
+  (14, 'vbrTv-4PsdA'),
+  (15, 'U5kQTKWTUX0'),
+  (16, 'SL5lwg1wYaE'),
+  (17, 'JeaBetH8UUc'),
+  (18, 'IajTL2RCJ_k'),
+  (19, 'ni04Zp7mUMM'),
+  (20, 'SutAIv68yNk'),
+  (21, 've1L21l1GW4'),
+  (22, 'oGSHKXEKT2Q'),
+  (23, 'rUD3Y1BFJFA'),
+  (24, 'wdA5y0k7CRA'),
+  (25, 'YTWm6sG0n6s'),
+  (26, 'UixhcccGcdY'),
+  (27, 'HA6XxtGNOm0'),
+  (28, 'vFgjDSySYo8'),
+  (29, 'kLd5AvsLWAc');
+
 INSERT INTO public.seed_profiles (id, label, description, is_default, updated_at)
 VALUES ('dan-koe-demo', 'Dan Koe Demo', 'Preloaded CreatorLens dashboard for Dan Koe.', true, now())
 ON CONFLICT (id) DO UPDATE SET
@@ -90,7 +127,7 @@ WITH video_seed AS (
     'video_dan_koe_' || lpad(gs::text, 3, '0') AS id,
     'dan-koe-demo-' || lpad(gs::text, 3, '0') AS source_video_id,
     replace(t.template, '{topic}', c.topic) AS title,
-    '/serpapi-square-logo.png' AS thumbnail_url,
+    'https://i.ytimg.com/vi/' || y.youtube_video_id || '/hqdefault.jpg' AS thumbnail_url,
     (175000 + c.idx * 38000 + ((gs - 1) * 7919 % 620000) + CASE WHEN (gs - 1) % 17 = 0 THEN 520000 ELSE 0 END)::bigint AS views,
     (DATE '2026-06-18' - ((gs - 1) * 7) * INTERVAL '1 day')::date AS published_date,
     CASE
@@ -108,6 +145,7 @@ WITH video_seed AS (
   FROM generate_series(1, 100) AS gs
   JOIN _dan_koe_clusters c ON c.idx = ((gs - 1) % 8)
   JOIN _dan_koe_templates t ON t.idx = ((gs - 1) % 20)
+  JOIN _dan_koe_thumbnails y ON y.idx = ((gs - 1) % 30)
 )
 INSERT INTO public.videos (
   id, creator_id, source_video_id, title, thumbnail_url, views,

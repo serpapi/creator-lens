@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const EXAMPLE_CREATORS = ["Dan Koe", "Ali Abdaal", "MrBeast"];
+const EXAMPLE_CREATORS = ["Ali Abdaal", "MrBeast"];
 const VIDEO_COUNT_OPTIONS = [10, 25, 50, 100];
 
 export function AnalyzeForm() {
@@ -18,6 +18,15 @@ export function AnalyzeForm() {
 
   return (
     <div className="w-full max-w-xl mx-auto space-y-4">
+      <button
+        onClick={() => navigate("Dan Koe")}
+        className="w-full rounded-xl border border-[#DDD6FE] bg-[#F3E8FF] px-4 py-3 text-left transition hover:bg-[#EDE9FE]"
+      >
+        <span className="block text-[13px] font-semibold text-[#7C3AED]">Try preloaded demo</span>
+        <span className="block text-[15px] font-semibold text-gray-900">Dan Koe</span>
+        <span className="block text-[13px] text-gray-500">Loads instantly from seeded Neon data. No API keys required.</span>
+      </button>
+
       <div className="flex gap-2">
         <input
           type="text"
@@ -32,7 +41,7 @@ export function AnalyzeForm() {
           disabled={!input.trim()}
           className="bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-40 text-white text-[15px] font-semibold px-5 py-3 rounded-xl transition"
         >
-          Analyze Creator
+          Bring your own API key
         </button>
       </div>
 
@@ -62,7 +71,7 @@ export function AnalyzeForm() {
             onClick={() => navigate(name)}
             className="text-[13px] font-medium text-[#7C3AED] bg-[#F3E8FF] hover:bg-[#EDE9FE] border border-[#DDD6FE] rounded-full px-3.5 py-1.5 transition"
           >
-            {name}
+            {name} · Bring your own API key
           </button>
         ))}
       </div>
