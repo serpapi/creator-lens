@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { CreatorAnalysis } from "@/lib/types";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -33,7 +34,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <p className="text-red-500 text-sm">{error}</p>
-        <a href="/" className="text-sm text-violet-600 underline">← Go back</a>
+        <Link href="/" className="text-sm text-violet-600 underline">← Go back</Link>
       </div>
     );
   }

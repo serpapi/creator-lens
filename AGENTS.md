@@ -2,18 +2,23 @@
 
 ## Project Overview
 
-CreatorLens is a polished DevRel demo that analyzes a YouTube creator's content strategy. The current app is intentionally lightweight: a user enters a creator name, the app fetches YouTube search/video/transcript data through SerpApi, sends normalized transcript and metadata payloads to DeepSeek, then renders a dashboard with themes, title patterns, beliefs, audience pain points, cadence, video-level analysis, and a strategy report.
+CreatorLens is a polished DevRel demo that analyzes a YouTube creator's content strategy. The production demo must be preloaded from Neon Postgres seed data, not powered by public live SerpApi or DeepSeek calls.
 
-This is a showcase/demo app, not a full SaaS product. Keep product decisions optimized for clarity, reliability during demos, and readable implementation.
+Current app behavior is still mostly stateless: a user enters a creator name, the app can fetch YouTube data through SerpApi, send normalized transcript and metadata payloads to DeepSeek, and render a dashboard. The target workflow is now:
 
-Current primary flow:
+```text
+Neon: create Postgres database
+↓
+Codex: create tables + seed demo data
+↓
+Codex: connect app to Neon
+↓
+Vercel: deploy app
+↓
+User opens demo with preloaded dashboard
+```
 
-1. `/` renders the CreatorLens search experience.
-2. `components/analyze-form.tsx` navigates to `/dashboard/[creatorName]?maxVideos=N`.
-3. `app/dashboard/[creatorName]/page.tsx` calls `POST /api/analyze-creator`.
-4. `app/api/analyze-creator/route.ts` fetches videos through `lib/serpapi.ts`.
-5. `lib/deepseek.ts` runs the two-step DeepSeek analysis pipeline.
-6. `components/dashboard.tsx` and chart/table components render the result.
+Treat live external API analysis as a private local/development tool only. Public deployments should serve deterministic, seeded dashboards from Neon so API keys are never needed in the public Vercel project.
 
 ## Tech Stack
 
@@ -25,12 +30,12 @@ Current primary flow:
 - Base UI dependency available via `@base-ui/react`.
 - Recharts for dashboard charts.
 - Lucide React for icons.
-- SerpApi JavaScript client for YouTube data.
-- DeepSeek chat completions API for analysis.
-- Planned persistence layer: Neon Postgres.
-- Deployment target: Vercel.
+- SerpApi JavaScript client for private/local YouTube data ingestion.
+- DeepSeek chat completions API for private/local analysis generation.
+- Neon Postgres for production demo data.
+- Vercel for deployment.
 
-Important: `CLAUDE.md` still says "Next.js 15" and "Do NOT use Database." Treat that as historical project intent. The installed dependency is Next.js 16, and this Codex plan explicitly adds a future Neon Postgres path while preserving the lightweight demo spirit.
+Important: `CLAUDE.md` still says "Next.js 15" and "Do NOT use Database." Treat that as historical guidance. The installed dependency is Next.js 16, and this Codex guide supersedes it for the Neon-seeded public demo workflow.
 
 ## Local Development Commands
 
@@ -50,46 +55,48 @@ Before changing any Next.js app, route handler, caching, Server Component, Clien
 
 ## Environment Variables
 
-Current required variables:
+Production Vercel should contain Neon connection variables only:
 
-- `SERPAPI_API_KEY` - server-only key for SerpApi YouTube engines.
-- `DEEPSEEK_API_KEY` - server-only key for DeepSeek chat completions.
+- `DATABASE_URL` - pooled Neon Postgres connection string for app reads in Vercel.
+- `DIRECT_DATABASE_URL` - direct Neon Postgres connection string for migrations and seed scripts, if those scripts run from trusted environments.
+- `CREATORLENS_DEMO_MODE=true` - production should serve seeded demo dashboards.
+- `CREATORLENS_SEED_PROFILE` - optional default profile, for example `dan-koe`.
 
-Planned Neon variables:
+Private local-only variables:
 
-- `DATABASE_URL` - pooled Neon Postgres connection string for application queries in serverless/Vercel environments.
-- `DIRECT_DATABASE_URL` - direct Neon Postgres connection string for migrations and administrative scripts.
-- `CREATORLENS_DEMO_MODE` - optional feature flag; use `true` to prefer seed/demo data over live paid APIs.
-- `CREATORLENS_SEED_PROFILE` - optional seed profile name, for example `default`, `dan-koe`, or `vercel-demo`.
+- `SERPAPI_API_KEY` - local/private ingestion only. Do not add this to public Vercel production.
+- `DEEPSEEK_API_KEY` - local/private analysis generation only. Do not add this to public Vercel production.
 
 Rules:
 
 - Never expose secrets to Client Components or `NEXT_PUBLIC_*` variables unless the value is intentionally public.
 - Keep `.env.local` local-only and out of commits.
-- Mirror production values in Vercel Project Settings, not in source files.
+- Do not put SerpApi or DeepSeek keys in a public demo deployment.
+- Public deployments must not provide an unauthenticated endpoint that spends API credits.
+- If live analysis is ever needed in production, put it behind authentication, rate limits, and explicit owner-only controls.
 
 ## Database Plan With Neon Postgres
 
-The app does not currently use a database. Add Neon Postgres only when implementing persistence, demo reliability, cached analysis, or shareable saved dashboards.
+Neon Postgres is the production source for preloaded dashboards. The app should read demo dashboard data from Neon instead of calling SerpApi or DeepSeek at request time.
 
-Recommended approach:
+Recommended schema:
 
-1. Use Neon Postgres as the canonical store for creators, analyzed videos, transcripts, analysis runs, and seed/demo records.
-2. Use a pooled Neon connection string for normal Vercel serverless reads/writes.
-3. Use a direct connection string only for schema migrations and one-off maintenance tasks.
-4. Keep writes in route handlers or server-only modules; do not query Neon directly from Client Components.
-5. Create a development branch in Neon for schema changes before applying migrations to the production branch.
-6. Prefer additive, zero-downtime migrations: add nullable columns first, backfill separately, then add constraints after validation.
-7. Keep the first schema small:
-   - `creators`: normalized creator identity, display name, optional YouTube URL/handle.
-   - `videos`: SerpApi video metadata, thumbnails, views, published date, length.
-   - `transcripts`: transcript text and fetch status by video.
-   - `analysis_runs`: creator, max video count, model/provider metadata, status, timestamps.
-   - `analysis_results`: dashboard-ready JSON plus schema version.
-   - `seed_profiles`: named fixture bundles for demo mode.
-8. Store AI results as structured JSON for fast dashboard replay, but keep enough normalized metadata for filtering, tables, and future comparisons.
-9. Add indexes around common lookups: creator slug/name, analysis run status, latest run per creator, video ID, and seed profile.
-10. Document every migration and seed script in the same PR that introduces it.
+1. `creators`: normalized creator identity, slug, display name, optional YouTube URL/handle.
+2. `videos`: video metadata, thumbnails, views, published date, length, source video ID.
+3. `transcripts`: optional transcript excerpts and fetch status by video.
+4. `analysis_runs`: creator, max video count, model/provider metadata, status, timestamps, seed profile.
+5. `analysis_results`: dashboard-ready JSON matching `CreatorAnalysis`, schema version, run ID.
+6. `seed_profiles`: named fixture bundles such as `dan-koe`, `ali-abdaal`, and `mrbeast`.
+
+Implementation rules:
+
+- Use a pooled Neon connection string for normal Vercel serverless reads.
+- Use a direct connection string for migrations and seed scripts.
+- Keep writes in server-only modules or trusted scripts.
+- Do not query Neon directly from Client Components.
+- Create a Neon development branch for schema work before applying migrations to production.
+- Prefer additive, zero-downtime migrations.
+- Make seed scripts idempotent with stable creator slugs and video IDs.
 
 Neon docs source of truth:
 
@@ -100,27 +107,28 @@ Neon docs source of truth:
 
 ## Demo Mode Design
 
-Demo mode should make the app reliable on stage, in blog posts, and in preview deployments without requiring live SerpApi and DeepSeek calls every time.
+Demo mode is the public production design, not a fallback afterthought.
 
 Design goals:
 
-- Preserve the same dashboard UI and data contract used by live analysis.
-- Make demo responses fast and deterministic.
-- Avoid spending API credits during repeated demos.
-- Allow a visible fallback when external APIs fail.
+- Public demo opens quickly to a preloaded dashboard.
+- Public demo does not require SerpApi or DeepSeek keys.
+- Public users cannot spend API credits.
+- Seeded dashboards use the same `CreatorAnalysis` shape as live/local analysis.
+- Live analysis remains available only in trusted local development.
 
 Suggested behavior:
 
-1. Add a server-only demo data resolver that returns a `CreatorAnalysis` object matching `lib/types.ts`.
-2. Gate demo mode with `CREATORLENS_DEMO_MODE=true` and optional request-level selection through known example creators.
-3. Prefer seeded database records once Neon is added; before Neon, use checked-in fixture JSON under a dedicated fixtures directory.
-4. In demo mode, do not call SerpApi or DeepSeek unless explicitly requested by a development-only override.
-5. If live analysis fails and a matching seed exists, return the seed with a non-sensitive `source: "demo-fallback"` marker in server logs or metadata.
-6. Keep fixture content realistic and aligned with the UI reference, including charts, table rows, and strategy report text.
+1. `/` can show example creators or link directly to a seeded default dashboard.
+2. `/dashboard/[creatorName]` first resolves a creator slug against Neon seed data.
+3. `POST /api/analyze-creator` should return seeded Neon data in demo mode.
+4. If a creator is not seeded, return a helpful "demo profile unavailable" response rather than calling paid APIs.
+5. Keep live SerpApi/DeepSeek calls behind an explicit local-only guard such as `CREATORLENS_ENABLE_LIVE_ANALYSIS=true`.
+6. Log whether a response came from `neon-seed`, `local-live`, or `unavailable`, but do not expose secrets.
 
 ## Seed Data Strategy
 
-Seed data should support three needs: local development, Vercel preview demos, and production fallback demos.
+Seed data should support the public demo, Vercel previews, and local development.
 
 Recommended seed profiles:
 
@@ -138,11 +146,12 @@ Seed contents:
 
 Implementation path:
 
-1. Start with fixture JSON matching `CreatorAnalysis`.
-2. Add a seed script after Neon is introduced.
-3. Make seeds idempotent by upserting on stable slugs and video IDs.
-4. Version seed payloads so old dashboard JSON can be migrated or regenerated.
-5. Keep seed data small enough for quick local setup.
+1. Generate or curate fixture JSON locally.
+2. Create Neon tables.
+3. Insert fixture JSON into Neon with idempotent seed scripts.
+4. Connect the app to Neon read paths.
+5. Remove SerpApi and DeepSeek keys from public Vercel production.
+6. Deploy to Vercel and verify that the dashboard loads from seeded data.
 
 ## Deployment Target: Vercel
 
@@ -150,22 +159,22 @@ Vercel is the intended production host.
 
 Deployment notes:
 
-- Use Vercel environment variables for `SERPAPI_API_KEY`, `DEEPSEEK_API_KEY`, and future Neon connection strings.
-- Preserve the API route timeout needs. `app/api/analyze-creator/route.ts` currently exports `maxDuration = 300`.
-- Test `npm run build` before deploying.
-- Ensure `next.config.ts` continues to allow YouTube thumbnail hosts used by SerpApi results.
-- When Neon is added, use Vercel preview deployments with Neon development/preview branches where practical.
+- Production Vercel should use Neon env vars and demo-mode flags only.
+- Do not configure `SERPAPI_API_KEY` or `DEEPSEEK_API_KEY` in public production.
+- Test `npm run lint` and `npm run build` before deploying.
+- Ensure `next.config.ts` continues to allow YouTube thumbnail hosts used by seeded data.
+- Use Vercel preview deployments with Neon development/preview branches when schema changes are involved.
 - Keep production demo behavior deterministic; external API outages should not break the showcase path.
 
 ## Coding Conventions
 
 - Use TypeScript interfaces from `lib/types.ts` as the dashboard contract.
-- Keep server-only API keys inside route handlers or `lib/*` server modules.
+- Keep server-only API keys inside trusted local modules/scripts only.
 - Keep Client Components explicit with `"use client"` only when hooks, browser APIs, or client navigation are required.
 - Prefer small, readable modules over framework-heavy abstractions.
 - Match existing import style with `@/*` aliases.
-- Use async/await and graceful fallbacks for external API failures.
-- Keep the two-step DeepSeek analysis pattern unless there is a clear reason to change it.
+- Use async/await and graceful fallbacks for external failures.
+- Preserve the two-step DeepSeek analysis pattern for local/private generation.
 - Reuse existing UI primitives and dashboard components before adding new component systems.
 - Use Recharts for chart visualizations.
 - Use Lucide icons for common interface icons.
@@ -197,22 +206,20 @@ Be careful with these files:
 
 ## Step-by-Step Implementation Plan
 
-Use this order for future implementation work. Do not skip verification steps.
+Use this order for the new public-demo workflow:
 
-1. Read the relevant Next.js docs in `node_modules/next/dist/docs/` for the feature area being changed.
-2. Run `npm run lint` and, if relevant, `npm run build` to establish a baseline.
-3. Confirm the current dashboard contract in `lib/types.ts`.
-4. Add demo fixture JSON that satisfies `CreatorAnalysis`.
-5. Add a server-only demo data resolver and wire it behind `CREATORLENS_DEMO_MODE`.
-6. Update `POST /api/analyze-creator` to choose demo data before live SerpApi/DeepSeek calls when demo mode is enabled.
-7. Verify local demo mode with `npm run dev` and example creators.
-8. Add Neon dependencies and a small database access layer only after demo fixtures are stable.
-9. Create the initial Neon schema for creators, videos, transcripts, analysis runs, analysis results, and seed profiles.
-10. Add idempotent seed scripts for the three recommended seed profiles.
-11. Add route-handler logic to read cached/seeded analysis results from Neon before running live analysis.
-12. Add write-through persistence for successful live analysis runs.
-13. Test migrations against a Neon development branch before applying to production.
-14. Configure Vercel environment variables for live mode and demo mode.
-15. Run `npm run lint` and `npm run build`.
-16. Smoke test these paths: home page, live analysis with 10 videos, demo-mode profile, API failure fallback, dashboard table and charts, mobile layout.
-17. Document any new commands, environment variables, and deployment steps in `README.md` or this file as appropriate.
+1. Read the relevant Next.js docs in `node_modules/next/dist/docs/`.
+2. Create a Neon Postgres database.
+3. Choose a small schema for creators, videos, transcripts, analysis runs, analysis results, and seed profiles.
+4. Generate or curate demo fixture data locally using private API keys only.
+5. Create tables in a Neon development branch.
+6. Seed demo data into Neon with idempotent scripts.
+7. Connect the app to Neon with server-only database helpers.
+8. Update dashboard routes and API routes to read seeded data in demo mode.
+9. Ensure missing/unseeded creators do not trigger paid API calls in public production.
+10. Configure Vercel with Neon env vars and `CREATORLENS_DEMO_MODE=true`.
+11. Confirm SerpApi and DeepSeek keys are absent from Vercel production.
+12. Run `npm run lint` and `npm run build`.
+13. Deploy to Vercel.
+14. Smoke test: home page, seeded dashboard, unseeded creator response, mobile layout.
+15. Only after the seeded public demo works, consider an authenticated owner-only live ingestion path.
