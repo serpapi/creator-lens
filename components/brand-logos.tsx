@@ -23,6 +23,17 @@ export function DeepSeekBadge({ size = "md" }: { size?: "sm" | "md" }) {
   );
 }
 
+// Kimi has no logo asset in public/, so this badge is text-based rather than an image.
+export function KimiBadge({ size = "md" }: { size?: "sm" | "md" }) {
+  const text = size === "sm" ? "text-[11px]" : "text-[13px]";
+  const pad = size === "sm" ? "px-2 py-1" : "px-3 py-1.5";
+  return (
+    <span className={`inline-flex items-center bg-white border border-[#D1D5DB] rounded-lg ${pad}`}>
+      <span className={`${text} font-semibold text-gray-900`}>Kimi K3</span>
+    </span>
+  );
+}
+
 // ── Standalone logo images (for feature cards, etc.) ───────────────────────
 
 export function SerpApiLogoImg({ className = "h-6 w-auto" }: { className?: string }) {

@@ -1,18 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchVideosWithDetails } from "@/lib/serpapi";
-import { analyzeCreator } from "@/lib/deepseek";
+import { analyzeCreatorWithDeepSeek } from "@/lib/deepseek";
+import { analyzeCreatorWithKimi } from "@/lib/kimi";
 import { getDanKoeDemoAnalysis, isDanKoeDemoCreator } from "@/lib/demo-data";
+import { AiModel } from "@/lib/types";
 
 export const maxDuration = 300;
+
+function getModel(body: Record<string, unknown>): AiModel {
+  return body.model === "kimi-k3" ? "kimi-k3" : "deepseek";
+}
 
 function getUserApiKeys(body: Record<string, unknown>) {
   const apiKeys = (body.apiKeys ?? {}) as Record<string, unknown>;
   const serpapiApiKey = body.SERPAPI_API_KEY ?? body.serpapiApiKey ?? apiKeys.SERPAPI_API_KEY ?? apiKeys.serpapiApiKey;
   const deepseekApiKey = body.DEEPSEEK_API_KEY ?? body.deepseekApiKey ?? apiKeys.DEEPSEEK_API_KEY ?? apiKeys.deepseekApiKey;
+  const kimiApiKey = body.KIMI_API_KEY ?? body.kimiApiKey ?? apiKeys.KIMI_API_KEY ?? apiKeys.kimiApiKey;
 
   return {
     serpapiApiKey: typeof serpapiApiKey === "string" ? serpapiApiKey.trim() : "",
     deepseekApiKey: typeof deepseekApiKey === "string" ? deepseekApiKey.trim() : "",
+    kimiApiKey: typeof kimiApiKey === "string" ? kimiApiKey.trim() : "",
   };
 }
 
@@ -43,14 +51,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ...analysis, source: "neon-seed" });
     }
 
-    const { serpapiApiKey, deepseekApiKey } = getUserApiKeys(body);
-    if (!serpapiApiKey || !deepseekApiKey) {
+    const model = getModel(body);
+    const { serpapiApiKey, deepseekApiKey, kimiApiKey } = getUserApiKeys(body);
+    const modelApiKey = model === "kimi-k3" ? kimiApiKey : deepseekApiKey;
+
+    if (!serpapiApiKey || !modelApiKey) {
       console.log("[analyze-creator] source=keys-required");
       return NextResponse.json(
         {
           error: "API keys are required for live analysis.",
           code: "api_keys_required",
-          requiredKeys: ["SERPAPI_API_KEY", "DEEPSEEK_API_KEY"],
+          requiredKeys: ["SERPAPI_API_KEY", model === "kimi-k3" ? "KIMI_API_KEY" : "DEEPSEEK_API_KEY"],
         },
         { status: 401 }
       );
@@ -65,7 +76,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const analysis = await analyzeCreator(trimmedCreatorName, videos, deepseekApiKey);
+    const analysis = model === "kimi-k3"
+      ? await analyzeCreatorWithKimi(trimmedCreatorName, videos, modelApiKey)
+      : await analyzeCreatorWithDeepSeek(trimmedCreatorName, videos, modelApiKey);
 
     // YouTube hides public like counts — use peak views instead
     const peakViews = videos.reduce((max, v) => Math.max(max, v.views), 0);

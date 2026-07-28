@@ -36,7 +36,7 @@ export function Dashboard({ data }: DashboardProps) {
 
   return (
     <div className="flex h-screen bg-[#F8FAFC]">
-      <Sidebar />
+      <Sidebar model={data.model} />
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[1100px] mx-auto px-6 py-6 space-y-6">

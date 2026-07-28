@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { CreatorAnalysis } from "@/lib/types";
+import { AiModel, CreatorAnalysis } from "@/lib/types";
 import { LoadingScreen } from "@/components/loading-screen";
 import { Dashboard } from "@/components/dashboard";
 
@@ -20,15 +20,22 @@ export default function DashboardPage() {
   const [data, setData] = useState<CreatorAnalysis | null>(null);
   const [error, setError] = useState("");
   const [needsKeys, setNeedsKeys] = useState(false);
+  const [model, setModel] = useState<AiModel>("deepseek");
   const [serpapiApiKey, setSerpapiApiKey] = useState("");
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
+  const [kimiApiKey, setKimiApiKey] = useState("");
   const [isSubmittingKeys, setIsSubmittingKeys] = useState(false);
 
-  const requestAnalysis = useCallback(async (apiKeys?: { serpapiApiKey: string; deepseekApiKey: string }) => {
+  const requestAnalysis = useCallback(async (submission?: { model: AiModel; apiKeys: { serpapiApiKey: string; deepseekApiKey?: string; kimiApiKey?: string } }) => {
     const res = await fetch("/api/analyze-creator", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ creatorName: decoded, maxVideos, apiKeys }),
+      body: JSON.stringify({
+        creatorName: decoded,
+        maxVideos,
+        model: submission?.model,
+        apiKeys: submission?.apiKeys,
+      }),
     });
 
     return {
@@ -38,12 +45,12 @@ export default function DashboardPage() {
     };
   }, [decoded, maxVideos]);
 
-  const analyze = useCallback((apiKeys?: { serpapiApiKey: string; deepseekApiKey: string }) => {
+  const analyze = useCallback((submission?: { model: AiModel; apiKeys: { serpapiApiKey: string; deepseekApiKey?: string; kimiApiKey?: string } }) => {
     setError("");
     setNeedsKeys(false);
-    setIsSubmittingKeys(!!apiKeys);
+    setIsSubmittingKeys(!!submission);
 
-    requestAnalysis(apiKeys)
+    requestAnalysis(submission)
       .then(({ ok, status, json }) => {
         if (status === 401 && json.code === "api_keys_required") {
           setNeedsKeys(true);
@@ -85,12 +92,19 @@ export default function DashboardPage() {
     };
   }, [requestAnalysis]);
 
+  const modelApiKey = model === "kimi-k3" ? kimiApiKey : deepseekApiKey;
+
   function submitKeys(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!serpapiApiKey.trim() || !deepseekApiKey.trim()) return;
+    if (!serpapiApiKey.trim() || !modelApiKey.trim()) return;
     analyze({
-      serpapiApiKey: serpapiApiKey.trim(),
-      deepseekApiKey: deepseekApiKey.trim(),
+      model,
+      apiKeys: {
+        serpapiApiKey: serpapiApiKey.trim(),
+        ...(model === "kimi-k3"
+          ? { kimiApiKey: kimiApiKey.trim() }
+          : { deepseekApiKey: deepseekApiKey.trim() }),
+      },
     });
   }
 
@@ -104,11 +118,31 @@ export default function DashboardPage() {
             </span>
             <h1 className="mt-4 text-[24px] font-bold text-[#111827]">Live analysis for {decoded}</h1>
             <p className="mt-2 text-[14px] leading-relaxed text-[#6B7280]">
-              Dan Koe uses the preloaded Neon demo. Other creators require your own SerpApi and DeepSeek keys for this request.
+              Dan Koe uses the preloaded Neon demo. Other creators require your own SerpApi and AI model keys for this request.
             </p>
           </div>
 
           <form onSubmit={submitKeys} className="space-y-3">
+            <div>
+              <span className="block text-[13px] font-medium text-[#374151] mb-1">AI model</span>
+              <div className="flex gap-2">
+                {(["deepseek", "kimi-k3"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setModel(option)}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-[14px] font-semibold transition ${
+                      model === option
+                        ? "bg-[#7C3AED] text-white border-[#7C3AED]"
+                        : "text-[#374151] bg-white border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    {option === "deepseek" ? "DeepSeek" : "Kimi K3"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <label className="block">
               <span className="block text-[13px] font-medium text-[#374151] mb-1">SERPAPI_API_KEY</span>
               <input
@@ -120,11 +154,13 @@ export default function DashboardPage() {
               />
             </label>
             <label className="block">
-              <span className="block text-[13px] font-medium text-[#374151] mb-1">DEEPSEEK_API_KEY</span>
+              <span className="block text-[13px] font-medium text-[#374151] mb-1">
+                {model === "kimi-k3" ? "KIMI_API_KEY" : "DEEPSEEK_API_KEY"}
+              </span>
               <input
                 type="password"
-                value={deepseekApiKey}
-                onChange={(e) => setDeepseekApiKey(e.target.value)}
+                value={model === "kimi-k3" ? kimiApiKey : deepseekApiKey}
+                onChange={(e) => (model === "kimi-k3" ? setKimiApiKey(e.target.value) : setDeepseekApiKey(e.target.value))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-[14px] outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[#F3E8FF]"
                 autoComplete="off"
               />
@@ -132,7 +168,7 @@ export default function DashboardPage() {
 
             <button
               type="submit"
-              disabled={!serpapiApiKey.trim() || !deepseekApiKey.trim() || isSubmittingKeys}
+              disabled={!serpapiApiKey.trim() || !modelApiKey.trim() || isSubmittingKeys}
               className="w-full rounded-lg bg-[#7C3AED] px-4 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[#6D28D9] disabled:opacity-40"
             >
               {isSubmittingKeys ? "Running analysis..." : "Run live analysis"}
@@ -156,7 +192,7 @@ export default function DashboardPage() {
 
   const isCurrentData = data ? normalizeCreator(data.creatorName) === normalizeCreator(decoded) : false;
 
-  if (!data || !isCurrentData) return <LoadingScreen creatorName={decoded} />;
+  if (!data || !isCurrentData) return <LoadingScreen creatorName={decoded} model={model} />;
 
   return <Dashboard data={data} />;
 }

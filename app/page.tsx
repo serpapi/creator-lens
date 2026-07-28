@@ -1,5 +1,5 @@
 import { AnalyzeForm } from "@/components/analyze-form";
-import { SerpApiBadge, DeepSeekBadge } from "@/components/brand-logos";
+import { SerpApiBadge, DeepSeekBadge, KimiBadge } from "@/components/brand-logos";
 
 const FEATURES = [
   {
@@ -17,8 +17,8 @@ const FEATURES = [
   {
     logo: "/deepseek-square-logo.png",
     alt: "DeepSeek",
-    title: "Strategy Analysis via DeepSeek",
-    desc: "DeepSeek AI extracts content themes, title patterns, beliefs, and a full strategy report.",
+    title: "Strategy Analysis via DeepSeek or Kimi K3",
+    desc: "Choose DeepSeek or Kimi K3 to extract content themes, title patterns, beliefs, and a full strategy report.",
   },
 ];
 
@@ -33,6 +33,8 @@ export default function Home() {
           <SerpApiBadge size="sm" />
           <span className="text-[12px] text-gray-300 font-medium">×</span>
           <DeepSeekBadge size="sm" />
+          <span className="text-[12px] text-gray-300 font-medium">/</span>
+          <KimiBadge size="sm" />
         </div>
       </nav>
 
@@ -43,13 +45,15 @@ export default function Home() {
             <SerpApiBadge />
             <span className="text-[13px] text-gray-300 font-medium">×</span>
             <DeepSeekBadge />
+            <span className="text-[13px] text-gray-300 font-medium">/</span>
+            <KimiBadge />
           </div>
 
           <h1 className="text-[42px] font-bold text-gray-900 leading-tight tracking-tight">
             Analyze any YouTube creator&apos;s<br />content strategy
           </h1>
           <p className="text-[17px] font-normal text-gray-500 leading-relaxed">
-            SerpApi fetches the videos. DeepSeek reads the patterns.<br />
+            SerpApi fetches the videos. DeepSeek or Kimi K3 reads the patterns.<br />
             You get a full strategy breakdown in seconds.
           </p>
         </div>

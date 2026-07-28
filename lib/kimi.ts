@@ -1,26 +1,26 @@
 import { CreatorAnalysis, VideoData } from "./types";
 import { runAnalysisPipeline } from "./analyze-pipeline";
 
-const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
+const KIMI_API_URL = "https://api.moonshot.ai/v1/chat/completions";
 
 const SYSTEM_MESSAGE =
   "You are a JSON-only assistant. Always respond with valid JSON only. No markdown, no code fences, no explanation.";
 
-// Strip ```json ... ``` or ``` ... ``` wrappers DeepSeek sometimes adds
+// Strip ```json ... ``` or ``` ... ``` wrappers Kimi sometimes adds
 function stripMarkdown(content: string): string {
   const match = content.match(/```(?:json)?\s*([\s\S]*?)```/);
   return match ? match[1].trim() : content.trim();
 }
 
-async function callDeepSeek<T>(label: string, prompt: string, apiKey: string): Promise<Partial<T>> {
-  const res = await fetch(DEEPSEEK_API_URL, {
+async function callKimi<T>(label: string, prompt: string, apiKey: string): Promise<Partial<T>> {
+  const res = await fetch(KIMI_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "deepseek-chat",
+      model: "kimi-k3",
       messages: [
         { role: "system", content: SYSTEM_MESSAGE },
         { role: "user", content: prompt },
@@ -31,16 +31,16 @@ async function callDeepSeek<T>(label: string, prompt: string, apiKey: string): P
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`DeepSeek error [${label}]: ${res.status} ${err}`);
+    throw new Error(`Kimi error [${label}]: ${res.status} ${err}`);
   }
 
   const data = await res.json();
   const raw = data.choices?.[0]?.message?.content ?? "";
 
-  console.log(`[DeepSeek ${label}] raw response (first 300 chars):`, raw.slice(0, 300));
+  console.log(`[Kimi ${label}] raw response (first 300 chars):`, raw.slice(0, 300));
 
   if (!raw) {
-    console.error(`[DeepSeek ${label}] empty response`);
+    console.error(`[Kimi ${label}] empty response`);
     return {};
   }
 
@@ -49,19 +49,19 @@ async function callDeepSeek<T>(label: string, prompt: string, apiKey: string): P
   try {
     return JSON.parse(cleaned);
   } catch (err) {
-    console.error(`[DeepSeek ${label}] JSON parse failed:`, err);
-    console.error(`[DeepSeek ${label}] raw content that failed:`, cleaned.slice(0, 500));
+    console.error(`[Kimi ${label}] JSON parse failed:`, err);
+    console.error(`[Kimi ${label}] raw content that failed:`, cleaned.slice(0, 500));
     return {};
   }
 }
 
-export async function analyzeCreatorWithDeepSeek(
+export async function analyzeCreatorWithKimi(
   creatorName: string,
   videos: VideoData[],
   apiKey: string
 ): Promise<CreatorAnalysis> {
   const result = await runAnalysisPipeline(creatorName, videos, (label, prompt) =>
-    callDeepSeek(label, prompt, apiKey)
+    callKimi(label, prompt, apiKey)
   );
-  return { ...result, model: "deepseek" };
+  return { ...result, model: "kimi-k3" };
 }

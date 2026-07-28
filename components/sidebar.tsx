@@ -1,7 +1,8 @@
 "use client";
 
 import { LayoutDashboard, PlayCircle, Tag, AlignLeft, Lightbulb, BarChart2, Settings } from "lucide-react";
-import { SerpApiBadge, DeepSeekBadge } from "./brand-logos";
+import { AiModel } from "@/lib/types";
+import { SerpApiBadge, DeepSeekBadge, KimiBadge } from "./brand-logos";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", active: true },
@@ -13,7 +14,13 @@ const NAV_ITEMS = [
   { icon: Settings, label: "Settings" },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  model?: AiModel;
+}
+
+export function Sidebar({ model = "deepseek" }: SidebarProps) {
+  const ModelBadge = model === "kimi-k3" ? KimiBadge : DeepSeekBadge;
+
   return (
     <aside className="w-60 flex-shrink-0 bg-white border-r border-[#E5E7EB] flex flex-col h-screen sticky top-0">
       <div className="px-5 py-5 border-b border-[#E5E7EB]">
@@ -43,7 +50,7 @@ export function Sidebar() {
         <p className="text-[11px] font-medium text-[#9CA3AF] uppercase tracking-wider">Powered by</p>
         <div className="flex flex-col gap-2">
           <SerpApiBadge size="sm" />
-          <DeepSeekBadge size="sm" />
+          <ModelBadge size="sm" />
         </div>
       </div>
     </aside>

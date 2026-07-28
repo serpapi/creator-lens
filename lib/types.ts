@@ -36,8 +36,11 @@ export interface VideoAnalysis {
   thumbnail?: string;
 }
 
+export type AiModel = "deepseek" | "kimi-k3";
+
 export interface CreatorAnalysis {
   creatorName: string;
+  model?: AiModel;
   videosAnalyzed: number;
   totalViews: number;
   averageViews: number;

@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-CreatorLens is a polished DevRel demo that analyzes a YouTube creator's content strategy. The production demo must be preloaded from Neon Postgres seed data, not powered by public live SerpApi or DeepSeek calls.
+CreatorLens is a polished DevRel demo that analyzes a YouTube creator's content strategy. The production demo must be preloaded from Neon Postgres seed data, not powered by public live SerpApi, DeepSeek, or Kimi K3 calls.
 
-Current app behavior is still mostly stateless: a user enters a creator name, the app can fetch YouTube data through SerpApi, send normalized transcript and metadata payloads to DeepSeek, and render a dashboard. The target workflow is now:
+Current app behavior is still mostly stateless: a user enters a creator name, the app can fetch YouTube data through SerpApi, send normalized transcript and metadata payloads to a user-selected AI model (DeepSeek or Kimi K3), and render a dashboard. The target workflow is now:
 
 ```text
 Neon: create Postgres database
@@ -23,10 +23,10 @@ Treat live external API analysis as a private local/development tool only. Publi
 Current routing rule:
 
 - Dan Koe is the only built-in demo profile and must read from Neon seed tables.
-- Dan Koe demo mode must not call SerpApi or DeepSeek.
+- Dan Koe demo mode must not call SerpApi, DeepSeek, or Kimi K3.
 - Any other creator is a bring-your-own-key live analysis flow.
-- Live analysis must require request-provided `SERPAPI_API_KEY` and `DEEPSEEK_API_KEY` values.
-- Do not use maintainer-owned server-side production SerpApi or DeepSeek keys for arbitrary public searches.
+- Live analysis must require request-provided `SERPAPI_API_KEY` plus the key for the selected model (`DEEPSEEK_API_KEY` or `KIMI_API_KEY`).
+- Do not use maintainer-owned server-side production SerpApi, DeepSeek, or Kimi keys for arbitrary public searches.
 
 ## Tech Stack
 
@@ -40,6 +40,7 @@ Current routing rule:
 - Lucide React for icons.
 - SerpApi JavaScript client for private/local YouTube data ingestion.
 - DeepSeek chat completions API for private/local analysis generation.
+- Kimi K3 (Moonshot AI) chat completions API as an alternate private/local analysis model.
 - Neon Postgres for production demo data.
 - Vercel for deployment.
 
@@ -73,13 +74,14 @@ Production Vercel should contain Neon connection variables only:
 Private local-only variables:
 
 - `SERPAPI_API_KEY` - optional local/private ingestion only. Do not add this to public Vercel production or use it for arbitrary public searches.
-- `DEEPSEEK_API_KEY` - optional local/private analysis generation only. Do not add this to public Vercel production or use it for arbitrary public searches.
+- `DEEPSEEK_API_KEY` - optional local/private analysis generation only (DeepSeek model). Do not add this to public Vercel production or use it for arbitrary public searches.
+- `KIMI_API_KEY` - optional local/private analysis generation only (Kimi K3 model). Do not add this to public Vercel production or use it for arbitrary public searches.
 
 Rules:
 
 - Never expose secrets to Client Components or `NEXT_PUBLIC_*` variables unless the value is intentionally public.
 - Keep `.env.local` local-only and out of commits.
-- Do not put SerpApi or DeepSeek keys in a public demo deployment.
+- Do not put SerpApi, DeepSeek, or Kimi keys in a public demo deployment.
 - Public deployments must not provide an unauthenticated endpoint that spends API credits.
 - For non-demo creators, the request must include user-provided API keys; validate both keys server-side before live analysis.
 - Never return, log, persist, or expose user-provided API keys.
@@ -87,7 +89,7 @@ Rules:
 
 ## Database Plan With Neon Postgres
 
-Neon Postgres is the production source for preloaded dashboards. The app should read demo dashboard data from Neon instead of calling SerpApi or DeepSeek at request time.
+Neon Postgres is the production source for preloaded dashboards. The app should read demo dashboard data from Neon instead of calling SerpApi, DeepSeek, or Kimi K3 at request time.
 
 Recommended schema:
 
@@ -122,7 +124,7 @@ Demo mode is the public production design, not a fallback afterthought.
 Design goals:
 
 - Public demo opens quickly to a preloaded dashboard.
-- Public demo does not require SerpApi or DeepSeek keys.
+- Public demo does not require SerpApi, DeepSeek, or Kimi keys.
 - Public users cannot spend API credits.
 - Seeded dashboards use the same `CreatorAnalysis` shape as live/local analysis.
 - Live analysis remains available only in trusted local development.
@@ -134,8 +136,8 @@ Suggested behavior:
 3. `/dashboard/[creatorName]` should request a seeded Dan Koe dashboard from Neon when the selected creator is Dan Koe.
 4. `POST /api/analyze-creator` must return seeded Neon data for Dan Koe.
 5. The Dan Koe path must read from `analysis_results`, `videos`, `transcripts`, `content_clusters`, and `creator_insights`.
-6. The Dan Koe path must not call SerpApi or DeepSeek.
-7. Non-Dan creator requests must validate request-provided SerpApi and DeepSeek keys before live analysis.
+6. The Dan Koe path must not call SerpApi, DeepSeek, or Kimi K3.
+7. Non-Dan creator requests must validate request-provided SerpApi and model (DeepSeek or Kimi) keys before live analysis.
 8. If non-Dan keys are missing, return an API-key-required response rather than calling paid APIs.
 9. Log whether a response came from `neon-seed`, `user-live`, or `keys-required`, but do not expose secrets.
 
@@ -163,7 +165,7 @@ Implementation path:
 2. Create Neon tables.
 3. Insert fixture JSON into Neon with idempotent seed scripts.
 4. Connect the app to Neon read paths.
-5. Remove SerpApi and DeepSeek keys from public Vercel production.
+5. Remove SerpApi, DeepSeek, and Kimi keys from public Vercel production.
 6. Deploy to Vercel and verify that the dashboard loads from seeded data.
 
 ## Deployment Target: Vercel
@@ -173,7 +175,7 @@ Vercel is the intended production host.
 Deployment notes:
 
 - Production Vercel should use Neon env vars and demo-mode flags only.
-- Do not configure `SERPAPI_API_KEY` or `DEEPSEEK_API_KEY` in public production.
+- Do not configure `SERPAPI_API_KEY`, `DEEPSEEK_API_KEY`, or `KIMI_API_KEY` in public production.
 - Test `npm run lint` and `npm run build` before deploying.
 - Ensure `next.config.ts` continues to allow YouTube thumbnail hosts used by seeded data.
 - Use Vercel preview deployments with Neon development/preview branches when schema changes are involved.
@@ -187,7 +189,7 @@ Deployment notes:
 - Prefer small, readable modules over framework-heavy abstractions.
 - Match existing import style with `@/*` aliases.
 - Use async/await and graceful fallbacks for external failures.
-- Preserve the two-step DeepSeek analysis pattern for local/private generation.
+- Preserve the two-step analysis pattern (shared in `lib/analyze-pipeline.ts`) for local/private generation, whichever model is selected.
 - Reuse existing UI primitives and dashboard components before adding new component systems.
 - Use Recharts for chart visualizations.
 - Use Lucide icons for common interface icons.
@@ -232,7 +234,7 @@ Use this order for the new public-demo workflow:
 9. Add BYOK validation for all other creators.
 10. Ensure missing/unseeded creators do not trigger paid API calls without request-provided keys.
 11. Configure Vercel with Neon env vars and `CREATORLENS_DEMO_MODE=true`.
-12. Confirm SerpApi and DeepSeek maintainer keys are absent from Vercel production.
+12. Confirm SerpApi, DeepSeek, and Kimi maintainer keys are absent from Vercel production.
 13. Run `npm run lint` and `npm run build`.
 14. Deploy to Vercel.
 15. Smoke test: home page, seeded Dan Koe dashboard, non-Dan API-key-required state, mobile layout.

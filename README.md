@@ -112,6 +112,7 @@ Do not add these to public Vercel production:
 ```txt
 SERPAPI_API_KEY
 DEEPSEEK_API_KEY
+KIMI_API_KEY
 ```
 
 Those maintainer-owned keys are for private local ingestion/generation only. For arbitrary non-demo creators, users must provide their own keys for that request.
@@ -125,6 +126,7 @@ If you need to generate or refresh seed data locally, create `.env.local`:
 ```txt
 SERPAPI_API_KEY=your_serpapi_key
 DEEPSEEK_API_KEY=your_deepseek_key
+KIMI_API_KEY=your_kimi_key
 DATABASE_URL=your_neon_pooled_connection_string
 DIRECT_DATABASE_URL=your_neon_direct_connection_string
 CREATORLENS_DEMO_MODE=true
@@ -156,7 +158,7 @@ Seed scripts should be idempotent and upsert by stable slugs and video IDs.
 3. App loads Dan Koe from Neon tables: `analysis_results`, `videos`, `transcripts`, `content_clusters`, and `creator_insights`.
 4. Dashboard renders immediately from stored analysis JSON.
 5. If a user searches any other creator, the UI shows **Bring your own API key**.
-6. Live analysis cannot run unless that request includes both `SERPAPI_API_KEY` and `DEEPSEEK_API_KEY`.
+6. Live analysis cannot run unless that request includes `SERPAPI_API_KEY` plus the API key for the selected model (`DEEPSEEK_API_KEY` or `KIMI_API_KEY`).
 
 ---
 
@@ -175,7 +177,9 @@ components/
 
 lib/
   serpapi.ts                  # Private/local SerpApi integration
-  deepseek.ts                 # Private/local AI analysis
+  analyze-pipeline.ts         # Shared two-step analysis pipeline
+  deepseek.ts                 # Private/local AI analysis (DeepSeek)
+  kimi.ts                     # Private/local AI analysis (Kimi K3)
   types.ts                    # TypeScript dashboard contract
 ```
 
@@ -190,7 +194,7 @@ Deploy to Vercel only after the app reads seeded demo data from Neon:
 3. Seed demo data.
 4. Connect the app to Neon.
 5. Configure Vercel with Neon env vars only.
-6. Confirm `SERPAPI_API_KEY` and `DEEPSEEK_API_KEY` are absent from Vercel production.
+6. Confirm `SERPAPI_API_KEY`, `DEEPSEEK_API_KEY`, and `KIMI_API_KEY` are absent from Vercel production.
 7. Run `npm run lint` and `npm run build`.
 8. Deploy to Vercel.
 9. Smoke test the preloaded dashboard.

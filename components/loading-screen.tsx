@@ -1,23 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SerpApiBadge, DeepSeekBadge } from "./brand-logos";
-
-const STEPS = [
-  { label: "Searching YouTube videos",  Badge: SerpApiBadge },
-  { label: "Fetching video details",     Badge: SerpApiBadge },
-  { label: "Fetching transcripts",       Badge: SerpApiBadge },
-  { label: "Generating AI analysis",     Badge: DeepSeekBadge },
-];
+import { AiModel } from "@/lib/types";
+import { SerpApiBadge, DeepSeekBadge, KimiBadge } from "./brand-logos";
 
 const STEP_DELAYS = [0, 3000, 7000, 12000];
 
 interface LoadingScreenProps {
   creatorName: string;
+  model?: AiModel;
 }
 
-export function LoadingScreen({ creatorName }: LoadingScreenProps) {
+export function LoadingScreen({ creatorName, model = "deepseek" }: LoadingScreenProps) {
   const [activeStep, setActiveStep] = useState(0);
+  const ModelBadge = model === "kimi-k3" ? KimiBadge : DeepSeekBadge;
+
+  const STEPS = [
+    { label: "Searching YouTube videos",  Badge: SerpApiBadge },
+    { label: "Fetching video details",     Badge: SerpApiBadge },
+    { label: "Fetching transcripts",       Badge: SerpApiBadge },
+    { label: "Generating AI analysis",     Badge: ModelBadge },
+  ];
 
   useEffect(() => {
     const timers = STEP_DELAYS.slice(1).map((delay, i) =>
@@ -34,7 +37,7 @@ export function LoadingScreen({ creatorName }: LoadingScreenProps) {
           <div className="flex items-center justify-center gap-2">
             <SerpApiBadge size="sm" />
             <span className="text-[12px] text-gray-300 font-medium">×</span>
-            <DeepSeekBadge size="sm" />
+            <ModelBadge size="sm" />
           </div>
           <h2 className="text-[26px] font-bold text-gray-900">
             Analyzing {creatorName}...
