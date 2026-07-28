@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     const trimmedCreatorName = creatorName.trim();
 
-    if (isDanKoeDemoCreator(trimmedCreatorName)) {
+    if (body.isDemo === true && isDanKoeDemoCreator(trimmedCreatorName)) {
       const analysis = await getDanKoeDemoAnalysis();
       if (!analysis) {
         return NextResponse.json(

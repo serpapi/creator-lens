@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const searchParams = useSearchParams();
   const decoded = decodeURIComponent(creatorName);
   const maxVideos = Number(searchParams.get("maxVideos") ?? "10");
+  const isDemo = searchParams.get("demo") === "true";
 
   const [data, setData] = useState<CreatorAnalysis | null>(null);
   const [error, setError] = useState("");
@@ -33,6 +34,7 @@ export default function DashboardPage() {
       body: JSON.stringify({
         creatorName: decoded,
         maxVideos,
+        isDemo,
         model: submission?.model,
         apiKeys: submission?.apiKeys,
       }),
@@ -43,7 +45,7 @@ export default function DashboardPage() {
       status: res.status,
       json: await res.json(),
     };
-  }, [decoded, maxVideos]);
+  }, [decoded, maxVideos, isDemo]);
 
   const analyze = useCallback((submission?: { model: AiModel; apiKeys: { serpapiApiKey: string; deepseekApiKey?: string; kimiApiKey?: string } }) => {
     setError("");

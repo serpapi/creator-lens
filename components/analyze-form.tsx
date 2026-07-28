@@ -11,15 +11,17 @@ export function AnalyzeForm() {
   const [input, setInput] = useState("");
   const [maxVideos, setMaxVideos] = useState(10);
 
-  function navigate(name: string) {
+  function navigate(name: string, isDemo = false) {
     if (!name.trim()) return;
-    router.push(`/dashboard/${encodeURIComponent(name.trim())}?maxVideos=${maxVideos}`);
+    const params = new URLSearchParams({ maxVideos: String(maxVideos) });
+    if (isDemo) params.set("demo", "true");
+    router.push(`/dashboard/${encodeURIComponent(name.trim())}?${params.toString()}`);
   }
 
   return (
     <div className="w-full max-w-xl mx-auto space-y-4">
       <button
-        onClick={() => navigate("Dan Koe")}
+        onClick={() => navigate("Dan Koe", true)}
         className="w-full rounded-xl border border-[#DDD6FE] bg-[#F3E8FF] px-4 py-3 text-left transition hover:bg-[#EDE9FE]"
       >
         <span className="block text-[13px] font-semibold text-[#7C3AED]">Try preloaded demo</span>
