@@ -2,6 +2,8 @@
 
 **A preloaded AI dashboard for analyzing YouTube creator strategy.**
 
+**Live demo:** [creator-lens-demo.vercel.app](https://creator-lens-demo.vercel.app/)
+
 CreatorLens is a lightweight DevRel demo that shows how a polished creator analytics dashboard can be powered by AI-generated insights, seeded into Neon Postgres, and deployed on Vercel.
 
 The public demo should not call SerpApi or DeepSeek directly. Instead, it should load precomputed dashboard data from Neon so API keys are never needed in the public deployment.
