@@ -6,7 +6,7 @@
 
 CreatorLens is a lightweight DevRel demo that shows how a polished creator analytics dashboard can be powered by AI-generated insights, seeded into Neon Postgres, and deployed on Vercel.
 
-The public demo should not call SerpApi or DeepSeek directly. Instead, it should load precomputed dashboard data from Neon so API keys are never needed in the public deployment.
+The public demo should not call SerpApi or DeepSeek or Kimi K3 directly. Instead, it should load precomputed dashboard data from Neon so API keys are never needed in the public deployment.
 
 Dan Koe is the built-in preloaded demo profile. Any other creator is a bring-your-own-key live analysis flow.
 
